@@ -1,7 +1,5 @@
 //Importe a biblioteca THREE.js
 import * as THREE from "https://cdn.skypack.dev/three@0.129.0/build/three.module.js";
-// Para permitir que a câmera se mova ao redor da cena
-import { OrbitControls } from "https://cdn.skypack.dev/three@0.129.0/examples/jsm/controls/OrbitControls.js";
 // Para permitir a importação do arquivo .gltf
 import { GLTFLoader } from "https://cdn.skypack.dev/three@0.129.0/examples/jsm/loaders/GLTFLoader.js";
 import * as dat from "https://cdn.skypack.dev/dat.gui";
@@ -11,12 +9,8 @@ const scene = new THREE.Scene();
 //crie uma nova câmera com posições e ângulos
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-
 //Mantenha os objetos 3D em uma matriz global para que possamos acessá-los mais tarde
 let objects = [];
-
-//OrbitControls permitem que a câmera se mova ao redor da cena
-let controls;
 
 //Instancie um novo renderizador e defina seu tamanho
 const renderer = new THREE.WebGLRenderer({ alpha: true }); //Alpha: true permite o fundo transparente
@@ -26,8 +20,30 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.getElementById("container3D").appendChild(renderer.domElement);
 
 // Defina a distância da câmera ao modelo 3D
-const defaultCameraDistance = 24;
-camera.position.z = defaultCameraDistance;
+const defaultCameraDistance = 50;
+
+// Variáveis de controle da câmera
+let zDist = 5.0;
+let rDist = defaultCameraDistance;
+let theta = 2;
+let phi = 1;
+
+// Ajuste a posição inicial da câmera
+camera.position.set(
+  rDist * Math.sin(phi) * Math.cos(theta),
+  rDist * Math.cos(phi),
+  rDist * Math.sin(phi) * Math.sin(theta)
+);
+camera.lookAt(scene.position);
+
+// Variáveis de controle da câmera
+let isDragging = false;
+let previousMousePosition = {
+  x: 0,
+  y: 0
+};
+let initialTheta = theta;
+let initialPhi = phi;
 
 // Função para adicionar iluminação Phong Shading à cena
 function addPhongShading(object) {
@@ -92,37 +108,37 @@ function addPhongShading(object) {
   });
 }
 
-//Isso adiciona controles à câmera, para que possamos girar / dar zoom com o mouse
-controls = new OrbitControls(camera, renderer.domElement);
-controls.addEventListener('change', () => {
-  const radius = Math.sqrt(camera.position.x ** 2 + camera.position.y ** 2 + camera.position.z ** 2);
-  const phi = Math.acos(camera.position.y / radius);
-  const theta = Math.atan2(camera.position.z, camera.position.x);
-  cameraSettings.radius = radius;
-  cameraSettings.phi = phi;
-  cameraSettings.theta = theta;
-  gui.updateDisplay();
-});
-
-const gui = new dat.GUI();
+// Atualize os valores iniciais de cameraSettings com base na câmera
 const cameraSettings = {
-  znear: 0.1,
-  zfar: 1000,
-  radius: 500,
-  theta: 0,
-  phi: 0,
-  fov: 120,
-  aspect: window.innerWidth / window.innerHeight
+  znear: camera.near,
+  zfar: camera.far,
+  radius: rDist,
+  theta: theta,
+  phi: phi,
+  fov: camera.fov,
+  aspect: camera.aspect
 };
 
+// Adicione controles GUI para os parâmetros da câmera
+const gui = new dat.GUI();
 gui.add(cameraSettings, 'znear', 0.1, 100).onChange(updateCamera);
 gui.add(cameraSettings, 'zfar', 100, 2000).onChange(updateCamera);
-gui.add(cameraSettings, 'radius', 100, 1000).onChange(updateCamera);
-gui.add(cameraSettings, 'theta', 0, 2 * Math.PI).onChange(updateCamera);
-gui.add(cameraSettings, 'phi', 0, Math.PI).onChange(updateCamera);
+gui.add(cameraSettings, 'radius', 1, 1000).onChange(value => {
+  rDist = value;
+  updateCameraPosition();
+});
+gui.add(cameraSettings, 'theta', 0, 2 * Math.PI).onChange(value => {
+  theta = value;
+  updateCameraPosition();
+});
+gui.add(cameraSettings, 'phi', 0, Math.PI).onChange(value => {
+  phi = value;
+  updateCameraPosition();
+});
 gui.add(cameraSettings, 'fov', 1, 180).onChange(updateCamera);
 gui.add(cameraSettings, 'aspect', 0.1, 4).onChange(updateCamera);
 
+// Função para atualizar a câmera com base nos valores de cameraSettings
 function updateCamera() {
   camera.near = cameraSettings.znear;
   camera.far = cameraSettings.zfar;
@@ -155,7 +171,7 @@ function loadObject(objToRender, position, scale) {
       console.log((xhr.loaded / xhr.total * 100) + '% loaded');
     },
     function (error) {
-      console.error(error);
+      console.error('Erro ao carregar o modelo:', error);
     }
   );
 }
@@ -164,12 +180,11 @@ function loadObject(objToRender, position, scale) {
 const scale = 0.5;
 loadObject('carro_militar', { x: -10, y: -5, z: 0 }, scale);
 loadObject('tanque_militar', { x: 10, y: -3, z: 0 }, scale * 3);
-loadObject('eye', { x: 20, y: 0, z: 0 }, scale/100);
+loadObject('eye', { x: 20, y: 0, z: 0 }, scale / 100);
 
 //Renderize a cena
 function animate() {
   requestAnimationFrame(animate);
- 
   renderer.render(scene, camera);
 }
 
@@ -180,11 +195,94 @@ window.addEventListener("resize", function () {
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// Função para atualizar a posição da câmera
+function updateCameraPosition() {
+  const eye = new THREE.Vector3(
+    rDist * Math.sin(phi) * Math.cos(theta),
+    rDist * Math.cos(phi),
+    rDist * Math.sin(phi) * Math.sin(theta)
+  );
+  camera.position.copy(eye);
+  camera.lookAt(scene.position);
 
+  // Atualize os valores do GUI
+  cameraSettings.theta = theta;
+  cameraSettings.phi = phi;
+  cameraSettings.radius = rDist;
+  gui.updateDisplay();
+}
 
-// Defina a distância da câmera ao modelo 3D com base nos objetos
-function setCameraPosition() {
-  camera.position.z = defaultCameraDistance;
+// Adicione ouvintes de eventos para o movimento do mouse
+document.addEventListener('mousedown', function(e) {
+  isDragging = true;
+  previousMousePosition = {
+    x: e.clientX,
+    y: e.clientY
+  };
+  initialTheta = theta;
+  initialPhi = phi;
+});
+
+document.addEventListener('mouseup', function() {
+  isDragging = false;
+});
+
+document.addEventListener('mousemove', function(e) {
+  if (isDragging) {
+    const deltaMove = {
+      x: e.clientX - previousMousePosition.x,
+      y: e.clientY - previousMousePosition.y
+    };
+
+    theta = initialTheta + deltaMove.x * 0.01;
+    phi = initialPhi - deltaMove.y * 0.01;
+
+    phi = Math.max(0, Math.min(Math.PI, phi));
+
+    updateCameraPosition();
+  }
+});
+
+// Adicione ouvinte de eventos para o scroll do mouse
+document.addEventListener('wheel', function(e) {
+  rDist += e.deltaY * 0.05;
+  rDist = Math.max(1, rDist);
+  updateCameraPosition();
+});
+
+// Verifique se os elementos existem antes de adicionar os ouvintes de eventos
+const increaseZButton = document.getElementById("increaseZ");
+const decreaseZButton = document.getElementById("decreaseZ");
+const increaseRButton = document.getElementById("increaseR");
+const decreaseRButton = document.getElementById("decreaseR");
+const increaseThetaButton = document.getElementById("increaseTheta");
+const decreaseThetaButton = document.getElementById("decreaseTheta");
+const increasePhiButton = document.getElementById("increasePhi");
+const decreasePhiButton = document.getElementById("decreasePhi");
+
+if (increaseZButton) {
+  increaseZButton.onclick = function() { zDist += 0.1; updateCameraPosition(); };
+}
+if (decreaseZButton) {
+  decreaseZButton.onclick = function() { zDist -= 0.1; updateCameraPosition(); };
+}
+if (increaseRButton) {
+  increaseRButton.onclick = function() { rDist += 0.1; updateCameraPosition(); };
+}
+if (decreaseRButton) {
+  decreaseRButton.onclick = function() { rDist -= 0.1; updateCameraPosition(); };
+}
+if (increaseThetaButton) {
+  increaseThetaButton.onclick = function() { theta = (theta + 0.1) % (2 * Math.PI); updateCameraPosition(); };
+}
+if (decreaseThetaButton) {
+  decreaseThetaButton.onclick = function() { theta = (theta - 0.1 + 2 * Math.PI) % (2 * Math.PI); updateCameraPosition(); };
+}
+if (increasePhiButton) {
+  increasePhiButton.onclick = function() { phi = (phi + 0.1) % (2 * Math.PI); updateCameraPosition(); };
+}
+if (decreasePhiButton) {
+  decreasePhiButton.onclick = function() { phi = (phi - 0.1 + 2 * Math.PI) % (2 * Math.PI); updateCameraPosition(); };
 }
 
 //Inicie a renderização 3D
