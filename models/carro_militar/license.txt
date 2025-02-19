@@ -1,0 +1,11 @@
+Model Information:
+* title:	Paramount Marauder - Armored Military Vehicle
+* source:	https://sketchfab.com/3d-models/paramount-marauder-armored-military-vehicle-4f8e9fda901344bfb10c47381511d074
+* author:	amanpatel9725 (https://sketchfab.com/amanpatel9725)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Paramount Marauder - Armored Military Vehicle" (https://sketchfab.com/3d-models/paramount-marauder-armored-military-vehicle-4f8e9fda901344bfb10c47381511d074) by amanpatel9725 (https://sketchfab.com/amanpatel9725) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
