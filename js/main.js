@@ -45,8 +45,8 @@ let previousMousePosition = {
 let initialTheta = theta;
 let initialPhi = phi;
 
-// Função para adicionar iluminação Phong Shading à cena
-function addPhongShading(object) {
+// Função para criar um material Phong Shading único para cada objeto
+function createPhongMaterial(child) {
   // Vertex Shader: calcula as normais e posições dos vértices
   const vertexShader = `
     varying vec3 vNormal;
@@ -65,15 +65,16 @@ function addPhongShading(object) {
     uniform vec3 lightPosition;
     uniform vec4 ambientProduct, diffuseProduct, specularProduct;
     uniform float shininess;
+    uniform vec4 materialColor; // Cor do material do objeto
     void main() {
       vec3 N = normalize(vNormal); // Normaliza a normal do fragmento
       vec3 L = normalize(lightPosition - vPosition); // Calcula a direção da luz
       vec3 E = normalize(-vPosition); // Calcula a direção do observador
       vec3 H = normalize(L + E); // Calcula o vetor de reflexão
 
-      vec4 ambient = ambientProduct; // Componente ambiente da iluminação
+      vec4 ambient = ambientProduct * materialColor; // Componente ambiente da iluminação
       float Kd = max(dot(L, N), 0.0); // Componente difusa da iluminação
-      vec4 diffuse = Kd * diffuseProduct; // Calcula a cor difusa
+      vec4 diffuse = Kd * diffuseProduct * materialColor; // Calcula a cor difusa
       float Ks = pow(max(dot(N, H), 0.0), shininess); // Componente especular da iluminação
       vec4 specular = Ks * specularProduct; // Calcula a cor especular
 
@@ -92,17 +93,22 @@ function addPhongShading(object) {
     ambientProduct: { value: new THREE.Vector4(0.1, 0.1, 0.1, 1.0) }, // Componente ambiente
     diffuseProduct: { value: new THREE.Vector4(1.0, 1.0, 1.0, 1.0) }, // Componente difusa (branca para mostrar a cor do objeto)
     specularProduct: { value: new THREE.Vector4(0.9, 0.9, 0.9, 1.0) }, // Componente especular
-    shininess: { value: 30.0 } // Brilho especular
+    shininess: { value: 30.0 }, // Brilho especular
+    materialColor: { value: new THREE.Vector4(child.material.color.r, child.material.color.g, child.material.color.b, 1.0) } // Cor do material do objeto
   };
 
-  const phongMaterial = new THREE.ShaderMaterial({
+  return new THREE.ShaderMaterial({
     vertexShader: vertexShader,
     fragmentShader: fragmentShader,
     uniforms: uniforms
   });
+}
 
+// Função para adicionar iluminação Phong Shading à cena
+function addPhongShading(object) {
   object.traverse(child => {
     if (child.isMesh) {
+      const phongMaterial = createPhongMaterial(child);
       child.material = phongMaterial;
     }
   });
